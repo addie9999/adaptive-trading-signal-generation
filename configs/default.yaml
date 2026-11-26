@@ -1,0 +1,132 @@
+# =============================================================================
+# Default configuration — shared baseline for all environments.
+# research.yaml / production.yaml override individual keys via deep-merge.
+# Any key may also be overridden by an environment variable using the
+# AQAF__ prefix and "__" as the nesting separator, e.g.
+#   AQAF__DATA__TICKERS='["AAPL","MSFT"]'
+# =============================================================================
+
+project:
+  name: "aqaf"
+  seed: 42
+  artifacts_dir: "artifacts"   # models, reports, plots
+  log_level: "INFO"
+
+data:
+  provider: "yfinance"          # yfinance | polygon | finnhub | alphavantage
+  tickers: ["AAPL"]
+  start: "2015-01-01"
+  end: null                      # null => today
+  interval: "1d"
+  cache_dir: "data/raw"
+  processed_dir: "data/processed"
+  use_cache: true
+
+cleaning:
+  fill_method: "ffill"          # forward fill gaps
+  drop_duplicates: true
+  outlier_method: "iqr"         # iqr | isolation_forest | none
+  iqr_k: 3.0
+  isolation_contamination: 0.01
+  scaler: "robust"              # robust | standard | none
+  scale_features: true
+
+features:
+  # Feature engineering parameters. Windows are reused across feature groups.
+  trend_windows: [10, 20, 50, 200]
+  momentum_windows: [14]
+  volatility_windows: [14, 20]
+  volume_windows: [20]
+  stat_windows: [20]
+  lags: [1, 2, 3, 5, 10]
+  target_horizon: 1             # forward return horizon (bars) for the label
+
+regime:
+  n_states: 4
+  covariance_type: "full"
+  n_iter: 200
+  features: ["log_return", "rolling_vol_20", "volume_z"]
+  random_state: 42
+
+models:
+  enabled: ["arima", "xgboost", "lstm", "transformer"]
+  arima:
+    order: [5, 1, 0]
+    seasonal_order: [0, 0, 0, 0]
+  xgboost:
+    n_estimators: 400
+    max_depth: 4
+    learning_rate: 0.03
+    subsample: 0.8
+    colsample_bytree: 0.8
+    reg_lambda: 1.0
+  lstm:
+    sequence_length: 30
+    hidden_size: 64
+    num_layers: 2
+    dropout: 0.2
+    epochs: 30
+    batch_size: 64
+    lr: 0.001
+  transformer:
+    sequence_length: 30
+    d_model: 64
+    nhead: 4
+    num_layers: 2
+    dropout: 0.1
+    epochs: 30
+    batch_size: 64
+    lr: 0.001
+
+adaptive:
+  selection_metric: "directional_accuracy"   # metric used to pick best model per regime
+  min_samples_per_regime: 60
+
+alpha:
+  buy_threshold: 0.0015         # expected forward return to trigger BUY
+  sell_threshold: -0.0015       # expected forward return to trigger SELL
+  confidence_scaler: 50.0       # maps |return| to a 0..1 confidence via tanh
+
+risk:
+  account_equity: 100000.0
+  risk_per_trade: 0.01          # fraction of equity risked per trade
+  atr_period: 14
+  atr_stop_mult: 2.0
+  atr_target_mult: 3.0
+  max_position_fraction: 0.25
+  kelly_fraction_cap: 0.5       # never bet more than half-Kelly
+  sizing_method: "atr"          # atr | volatility | kelly | fixed
+
+validation:
+  scheme: "rolling"             # rolling | expanding
+  train_period: 756             # ~3y of trading days
+  test_period: 252              # ~1y
+  step: 252
+  purge: 5                      # embargo/purge bars between train and test
+
+backtesting:
+  initial_cash: 100000.0
+  commission_bps: 5.0           # 5 bps per trade
+  slippage_bps: 2.0
+  position_size_fraction: 0.95
+
+drift:
+  psi_threshold: 0.2
+  ks_pvalue_threshold: 0.05
+  adwin_delta: 0.002
+  rolling_window: 60
+  retrain_on_drift: true
+
+tracking:
+  enabled: true
+  tracking_uri: "file:./mlruns"
+  experiment_name: "aqaf-research"
+
+api:
+  host: "0.0.0.0"
+  port: 8000
+  model_artifact_dir: "artifacts/models"
+
+database:
+  url: "postgresql+psycopg2://aqaf:aqaf@localhost:5432/aqaf"
+  echo: false

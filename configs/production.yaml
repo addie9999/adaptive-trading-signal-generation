@@ -1,0 +1,22 @@
+# Production overrides — lean, fast, reproducible serving configuration.
+project:
+  log_level: "INFO"
+
+data:
+  tickers: ["AAPL"]
+  use_cache: true
+
+models:
+  # Tree models serve fast and have no heavy runtime deps; deep models optional.
+  enabled: ["xgboost"]
+
+drift:
+  retrain_on_drift: true
+
+tracking:
+  enabled: true
+  experiment_name: "aqaf-production"
+
+api:
+  host: "0.0.0.0"
+  port: 8000

@@ -1,0 +1,51 @@
+# Local stack: API + PostgreSQL signal store + MLflow tracking server.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: aqaf
+      POSTGRES_PASSWORD: aqaf
+      POSTGRES_DB: aqaf
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aqaf"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.12.1
+    command: >
+      mlflow server
+      --host 0.0.0.0 --port 5000
+      --backend-store-uri sqlite:////mlflow/mlflow.db
+      --artifacts-destination /mlflow/artifacts
+    ports:
+      - "5000:5000"
+    volumes:
+      - mlflowdata:/mlflow
+
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      AQAF_ENV: production
+      AQAF__DATABASE__URL: postgresql+psycopg2://aqaf:aqaf@db:5432/aqaf
+      AQAF__TRACKING__TRACKING_URI: http://mlflow:5000
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../artifacts:/app/artifacts
+      - ../data:/app/data
+
+volumes:
+  pgdata:
+  mlflowdata:

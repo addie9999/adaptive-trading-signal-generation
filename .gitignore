@@ -1,0 +1,31 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+
+# Virtual envs
+.venv/
+venv/
+env/
+
+# Artifacts & data (regenerated)
+artifacts/
+mlruns/
+reports/
+data/raw/
+data/processed/
+*.db
+*.joblib
+*.parquet
+
+# OS / IDE
+.DS_Store
+.vscode/
+.idea/
+
+# Secrets
+.env

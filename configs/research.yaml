@@ -1,0 +1,14 @@
+# Research overrides — broader universe, more experimentation, verbose tracking.
+project:
+  log_level: "DEBUG"
+
+data:
+  tickers: ["AAPL", "MSFT", "SPY", "JPM", "XOM"]
+  start: "2010-01-01"
+
+models:
+  enabled: ["arima", "xgboost", "lstm", "transformer"]
+
+tracking:
+  enabled: true
+  experiment_name: "aqaf-research"

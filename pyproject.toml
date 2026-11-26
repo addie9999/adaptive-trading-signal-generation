@@ -1,0 +1,80 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aqaf"
+version = "0.1.0"
+description = "Adaptive Quantitative Alpha Generation Framework using Regime-Aware Machine Learning"
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [{ name = "Quant Research" }]
+license = { text = "MIT" }
+
+dependencies = [
+    "numpy>=1.26",
+    "pandas>=2.2",
+    "scipy>=1.12",
+    "statsmodels>=0.14",
+    "scikit-learn>=1.4",
+    "xgboost>=2.0",
+    "hmmlearn>=0.3",
+    "optuna>=3.5",
+    "shap>=0.45",
+    "mlflow>=2.12",
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.29",
+    "pydantic>=2.6",
+    "pydantic-settings>=2.2",
+    "sqlalchemy>=2.0",
+    "psycopg2-binary>=2.9",
+    "yfinance>=0.2.40",
+    "pyyaml>=6.0",
+    "joblib>=1.4",
+    "matplotlib>=3.8",
+    "river>=0.21",            # ADWIN concept drift
+]
+
+[project.optional-dependencies]
+deep = [
+    "torch>=2.2",            # Transformer + LSTM (PyTorch backend)
+    "tensorflow>=2.16",      # optional Keras LSTM backend
+]
+backtest = [
+    "vectorbt>=0.26",
+    "backtesting>=0.3.3",
+]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.4",
+    "mypy>=1.10",
+    "types-PyYAML",
+]
+
+[project.scripts]
+aqaf = "main:cli"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+filterwarnings = ["ignore::DeprecationWarning", "ignore::FutureWarning"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "C4", "SIM"]
+# C408: dict(...) kwargs style is intentional for readable hyper-parameter blocks.
+ignore = ["E501", "C408"]
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+warn_unused_ignores = true
+disallow_untyped_defs = false
