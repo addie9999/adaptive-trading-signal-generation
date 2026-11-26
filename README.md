@@ -39,6 +39,20 @@ python main.py backtest --ticker AAPL --model xgboost
 
 The backtest evaluates a single forecaster. The adaptive selector uses a chronological holdout to compare models within regimes, but the regime detector sees the full training history, including that holdout. Its selection scores should therefore be read as exploratory. The project does not report a verified live trading record.
 
+## Monte Carlo and signal accuracy
+
+To explore how the order of historical outcomes affects the backtest, run:
+
+```sh
+python main.py backtest --ticker AAPL --model xgboost --simulations 2000 --block-size 5
+```
+
+This resamples consecutive blocks of the single-model backtest's net returns, including its configured costs. Each path spans the observed evaluation period. Block starts are sampled uniformly with replacement and wrap at the end of the history. Within each block, returns keep their original order. The JSON report gives 5th, 50th and 95th percentiles of compounded terminal return and maximum drawdown, plus the fraction of simulated paths that end below their starting value. Drawdown is a positive loss magnitude, measured from initial equity or a later peak. A value of 0.12 means 12%.
+
+Five bars is an illustrative block length. Compare several lengths because the results depend on which historical patterns the blocks preserve. The scenarios reuse observed returns and assume those blocks are representative. They do not estimate the probability that the next signal is correct or cover shocks absent from the sample.
+
+For a direction forecast, run the `walkforward` command above. Each fold reports the model's directional accuracy, the accuracy of always predicting the most frequent training-period direction, and the difference (`directional_accuracy_lift`). A lift of 0.03 means three percentage points. Use a final untouched time period after model selection. Both evaluation commands retain extreme return bars, avoiding a full-history outlier filter, and separate training labels from evaluation by at least the forward-label horizon. Results produced before these evaluation changes can differ.
+
 ## Explore the code
 
 | Path | What to look for |

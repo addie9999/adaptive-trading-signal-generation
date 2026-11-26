@@ -60,7 +60,7 @@ def _cmd_walkforward(args: argparse.Namespace) -> None:
 
     config = load_config(env=args.env)
     raw = MarketDataLoader(config).load_one(args.ticker)
-    clean = DataCleaner(config).clean(raw)
+    clean = DataCleaner(config).clean(raw, keep_outliers=True)
     X, y = FeatureEngineer(config).build_dataset(clean)
 
     validator = WalkForwardValidator(config)
@@ -85,22 +85,34 @@ def _cmd_backtest(args: argparse.Namespace) -> None:
 
     config = load_config(env=args.env)
     raw = MarketDataLoader(config).load_one(args.ticker)
-    clean = DataCleaner(config).clean(raw)
+    clean = DataCleaner(config).clean(raw, keep_outliers=True)
     X, y = FeatureEngineer(config).build_dataset(clean)
 
     split = int(len(X) * 0.7)
-    model = build_model(args.model, config).fit(X.iloc[:split], y.iloc[:split])
+    train_end = split - config.features.target_horizon
+    if train_end < 1 or len(X) - split < 2:
+        raise ValueError("Insufficient labelled history for a purged backtest.")
+    model = build_model(args.model, config).fit(X.iloc[:train_end], y.iloc[:train_end])
     preds = model.predict(X.iloc[split:])
 
     # Map predicted forward return to a long/flat/short target position.
     import pandas as pd
 
     prices = clean["close"].reindex(X.index).iloc[split:]
-    preds = preds[-len(prices):]
+    if not 0 < len(preds) <= len(prices):
+        raise ValueError("Unexpected number of backtest predictions.")
+    prices = prices.iloc[-len(preds):]
     positions = pd.Series(np.sign(preds), index=prices.index)
     result = BacktestEngine(config).run(prices, positions)
 
     print(json.dumps({k: round(float(v), 4) for k, v in result.metrics.items()}, indent=2))
+    if args.simulations is not None:
+        from src.backtesting.simulation import bootstrap_report
+
+        # The first row is an initialization bar with no prior position.
+        report = bootstrap_report(result.returns.iloc[1:], paths=args.simulations,
+                                  block_size=args.block_size, seed=config.project.seed)
+        print(json.dumps({"monte_carlo": report}, indent=2))
     plot_equity_curve(result.equity_curve, benchmark=prices)
     plot_drawdown(result.equity_curve)
 
@@ -143,6 +155,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_bt = sub.add_parser("backtest", parents=[common], help="Backtest a model's signals")
     p_bt.add_argument("--ticker", required=True)
     p_bt.add_argument("--model", default="xgboost")
+    p_bt.add_argument("--simulations", type=int, help="Number of circular block-bootstrap paths")
+    p_bt.add_argument("--block-size", type=int, default=5, help="Consecutive bars per sampled block")
     p_bt.set_defaults(func=_cmd_backtest)
 
     p_serve = sub.add_parser("serve", parents=[common], help="Run the FastAPI service")

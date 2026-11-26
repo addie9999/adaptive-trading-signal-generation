@@ -38,6 +38,7 @@ class WalkForwardValidator:
 
     def __init__(self, config: AppConfig) -> None:
         self.cfg = config.validation
+        self.horizon = config.features.target_horizon
 
     # ------------------------------------------------------------------ #
     def split(self, n_samples: int) -> Iterator[WalkForwardSplit]:
@@ -46,7 +47,7 @@ class WalkForwardValidator:
             self.cfg.train_period,
             self.cfg.test_period,
             self.cfg.step,
-            self.cfg.purge,
+            max(self.cfg.purge, self.horizon),
         )
         expanding = self.cfg.scheme == "expanding"
 
@@ -97,6 +98,10 @@ class WalkForwardValidator:
             if len(preds) != len(yt):
                 yt = yt[-len(preds):]
             metrics = forecast_metrics(yt, preds)
+            signs, counts = np.unique(np.sign(ytr), return_counts=True)
+            majority_sign = signs[np.argmax(counts)]
+            metrics["baseline_directional_accuracy"] = float(np.mean(np.sign(yt) == majority_sign))
+            metrics["directional_accuracy_lift"] = metrics["directional_accuracy"] - metrics["baseline_directional_accuracy"]
             metrics.update(
                 fold=sp.fold,
                 train_start=str(X.index[sp.train_idx[0]]),

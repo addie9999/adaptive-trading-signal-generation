@@ -33,13 +33,14 @@ class DataCleaner:
         self._scaler = None  # fitted lazily in `scale`
 
     # ------------------------------------------------------------------ #
-    def clean(self, frame: pd.DataFrame) -> pd.DataFrame:
+    def clean(self, frame: pd.DataFrame, *, keep_outliers: bool = False) -> pd.DataFrame:
         """Run the structural cleaning steps (no scaling)."""
         df = frame.copy()
         df = self._dedupe(df)
         df = self._sort_index(df)
         df = self._fill_missing(df)
-        df = self._drop_outliers(df)
+        if not keep_outliers:
+            df = self._drop_outliers(df)
         logger.info("Cleaning complete: %d rows retained", len(df))
         return df
 

@@ -33,6 +33,19 @@ def test_walk_forward_evaluate(config, synthetic_ohlcv):
     )
     assert not results.empty
     assert "directional_accuracy" in results.columns
+    for row, fold in zip(results.itertuples(), WalkForwardValidator(config).split(len(X))):
+        majority = np.sign(y.iloc[fold.train_idx]).mode().iloc[0]
+        expected = (np.sign(y.iloc[fold.test_idx]) == majority).mean()
+        assert row.baseline_directional_accuracy == expected
+        assert np.isclose(row.directional_accuracy_lift, row.directional_accuracy - expected)
+
+
+def test_purge_covers_label_horizon(config):
+    settings = config.model_copy(deep=True)
+    settings.features.target_horizon = 7
+    settings.validation.purge = 0
+    fold = next(WalkForwardValidator(settings).split(1000))
+    assert fold.train_idx[-1] + 7 < fold.test_idx[0]
 
 
 def test_backtest_runs_and_reports(config, synthetic_ohlcv):
